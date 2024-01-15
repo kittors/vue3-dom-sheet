@@ -1,0 +1,15 @@
+/* 在全局样式文件中 */
+:root {
+    --table-border: solid #E1E1E1;
+    --table-header-color: #f5f5f5;
+    --table-header-font-color: #999;
+    --table-header-font-size: 14px;
+    /* 自定义颜色变量 */
+    --table-scroll-background: #fff;
+}
+
+.middle-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
