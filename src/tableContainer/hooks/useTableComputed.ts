@@ -13,7 +13,7 @@ export default function useTableComputed(props: { tableConfig: TableConfig | nul
         let heightValue;
 
         if (totalRowHeight.value !== 0) {
-            heightValue = Math.min(currentTableHeight.value - 15, (totalRowHeight.value + (defaultColHeight.value as number)) * scale.value);
+            heightValue = Math.min(currentTableHeight.value - 15, (totalRowHeight.value + (defaultColHeight.value as number)) - 1);
         } else {
             heightValue = currentTableHeight.value - 15;
         }

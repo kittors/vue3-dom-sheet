@@ -1,11 +1,10 @@
 <template>
   <div
     class="table-row-header-item middle-center"
-    v-if="rowInfo && scale"
+    v-if="rowInfo"
     :style="{
-      width: rowHeaderWidth + 'px',
-      height: props.itemConfig.height * scale + 'px',
-      borderRight: rowHeaderRightBorder,
+      width: defaultRowWidth + 'px',
+      height: props.itemConfig.height + 'px',
       transform: `translate(0px,0px)`,
     }"
   >
@@ -18,9 +17,7 @@ import { defineProps, inject } from "vue";
 import type { RowConfig, RowInfo } from "./type";
 const props = defineProps<{ itemConfig: RowConfig }>();
 const rowInfo = inject<RowInfo>("rowInfo");
-const scale = inject<number>("scale");
-const rowHeaderRightBorder = inject<string>("rowHeaderRightBorder");
-const rowHeaderWidth = inject<number>("rowHeaderWidth");
+const defaultRowWidth = inject<number>("defaultRowWidth");
 </script>
 
 <style scoped lang="less">
@@ -28,8 +25,9 @@ const rowHeaderWidth = inject<number>("rowHeaderWidth");
   flex-shrink: 0;
   flex-grow: 0;
   box-sizing: border-box;
-  border-top: 1px var(--table-border);
-  border-left: 1px var(--table-border);
+  border-bottom: 1px var(--table-header-border);
+  border-left: 1px var(--table-header-border);
+  border-right: 1px var(--table-header-border);
   background-color: var(--table-header-color);
   position: sticky;
   left: 0;

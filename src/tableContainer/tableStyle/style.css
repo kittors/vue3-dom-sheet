@@ -4,6 +4,7 @@
     --table-header-color: #f5f5f5;
     --table-header-font-color: #999;
     --table-header-font-size: 14px;
+    --table-header-border: solid #C1C1C1;
     /* 自定义颜色变量 */
     --table-scroll-background: #fff;
 }

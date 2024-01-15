@@ -4,14 +4,7 @@
     v-if="totalColWidth && currentTableWidth && columnConfig && scale"
     :style="{
       width: props.itemConfig.width * scale + 'px',
-      height: columnHeaderHeight + 'px',
-      borderBottom: columnHeaderBottomBorder,
-      borderRight:
-        totalColWidth + defaultRowWidth > currentTableWidth
-          ? 'none'
-          : props.itemConfig.indexNum + 1 == columnConfig.length
-          ? `1px var(--table-border)`
-          : 'none',
+      height: defaultColHeight + 'px',
     }"
   >
     {{ props.itemConfig.indexContent }}
@@ -24,12 +17,10 @@ import type { ColumnConfig } from "./type";
 
 const props = defineProps<{ itemConfig: ColumnConfig }>();
 const columnConfig = inject<ColumnConfig[]>("columnConfig");
-const defaultRowWidth = inject<number>("defaultRowWidth", 0);
 const totalColWidth = inject<number>("totalColWidth");
 const currentTableWidth = inject<number>("currentTableWidth");
 const scale = inject<number>("scale");
-const columnHeaderHeight = inject<number>("columnHeaderHeight");
-const columnHeaderBottomBorder = inject<number>("columnHeaderBottomBorder");
+const defaultColHeight = inject<number>("defaultColHeight");
 </script>
 
 <style scoped lang="less">
@@ -37,8 +28,9 @@ const columnHeaderBottomBorder = inject<number>("columnHeaderBottomBorder");
   flex-shrink: 0;
   flex-grow: 0;
   box-sizing: border-box;
-  border-top: 1px var(--table-border);
-  border-left: 1px var(--table-border);
+  border-top: 1px var(--table-header-border);
+  border-bottom: 1px var(--table-header-border);
+  border-right: 1px var(--table-header-border);
   background-color: var(--table-header-color);
   color: var(--table-header-font-color);
   font-size: var(--table-header-font-size);

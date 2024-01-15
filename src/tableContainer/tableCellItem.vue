@@ -11,7 +11,7 @@
     :style="{
       height: props.height * scale + 'px',
       width: props.width * scale + 'px',
-      transform: `translateX(${(fixTranslaceRightWidth as number)}px)`,
+      transform: `translateX(${(translaceRightWidth as number)}px)`,
     }"
     :data-row="rows"
     :data-col="cols"
@@ -32,14 +32,14 @@ const columnConfig = inject<ColumnConfig[]>("columnConfig");
 const totalColWidth = inject<number>("totalColWidth");
 const currentTableWidth = inject<number>("currentTableWidth");
 const defaultRowWidth = inject<number>("defaultRowWidth");
-const fixTranslaceRightWidth = inject<number>("fixTranslaceRightWidth");
+const translaceRightWidth = inject<number>("translaceRightWidth");
 const scale = inject<number>("scale");
 </script>
 
 <style scoped lang="less">
 .table-cell-item {
-  border-left: 1px var(--table-border);
-  border-top: 1px var(--table-border);
+  border-right: 1px var(--table-border);
+  border-bottom: 1px var(--table-border);
   box-sizing: border-box;
   flex-shrink: 0;
   flex-grow: 0;

@@ -9,16 +9,14 @@
       class="table-corner"
       v-if="defaultColHeight && defaultRowWidth"
       :style="{
-        height: columnHeaderHeight + 'px',
-        width: rowHeaderWidth + 'px',
-        borderBottom: columnHeaderBottomBorder,
-        borderRight: rowHeaderRightBorder,
+        height: defaultColHeight + 'px',
+        width: defaultRowWidth + 'px',
       }"
     ></div>
     <div
       class="scrollbar-bottom-container"
       :style="{
-        width: currentTableWidth + 'px',
+        width: currentTableWidth - 1 + 'px',
         height: `16px`,
         bottom: `-15px`,
       }"
@@ -253,8 +251,7 @@ onUnmounted(() => {
     }
   }
   .table-corner {
-    border-top: 1px var(--table-border);
-    border-left: 1px var(--table-border);
+    border: 1px var(--table-header-border);
     position: absolute;
     left: 0px;
     top: 0px;
@@ -272,10 +269,10 @@ onUnmounted(() => {
   .scrollbar-right-container {
     position: absolute;
     width: 16px;
-    right: -16px;
+    right: -15px;
     border: 1px var(--table-border);
     box-sizing: border-box;
-    z-index: 2;
+    z-index: 3;
     background-color: var(--table-scroll-background);
   }
 }
@@ -286,12 +283,12 @@ onUnmounted(() => {
   overflow: visible;
 }
 :deep(.el-scrollbar__bar.is-vertical) {
-  right: -11px;
+  right: -10px;
   top: 4px;
   z-index: 4;
 }
 :deep(.el-scrollbar__bar.is-horizontal) {
-  bottom: -11px;
+  bottom: -10px;
   z-index: 4;
 }
 </style>
