@@ -9,8 +9,7 @@
       v-loading="isShowTableLoading"
       :height="500"
       :width="700"
-      :cache="2"
-      :isShowTableLoading="isShowTableLoading"
+      :cache="3"
       ref="tableContainerRef"
     >
     </tableContainer>

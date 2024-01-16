@@ -1,10 +1,6 @@
 <template>
   <div
     class="table-body"
-    @mousedown="startSelection"
-    @mousemove="updateSelection"
-    @mouseup="endSelection"
-    @mouseleave="endSelection"
     v-if="
       defaultRowWidth && totalColWidth && totalRowHeight && defaultColHeight
     "
@@ -34,19 +30,33 @@
 </template>
 
 <script setup lang="ts">
-import { inject, ref, reactive, computed, type Ref } from "vue";
+import {
+  inject,
+  ref,
+  reactive,
+  computed,
+  type Ref,
+  onMounted,
+  onBeforeUnmount,
+} from "vue";
 import TableRow from "./tableRow.vue";
-import type { ColumnConfig, RowConfig } from "./type";
+import throttle from "lodash/throttle";
+import { ElScrollbar } from "element-plus";
+import type { ColumnConfig, RowConfig, RenderConfig } from "./type";
 const renderRowArr = inject<RowConfig[] | null>("renderRowArr");
 const totalRenderWidth = inject<number>("totalRenderWidth");
 const placeholderTopHeight = inject<number>("placeholderTopHeight");
 const totalColWidth = inject<number>("totalColWidth");
 const defaultRowWidth = inject<Ref<number>>("defaultRowWidth");
 const totalRowHeight = inject<number>("totalRowHeight");
-const defaultColHeight = inject<number>("defaultColHeight");
+const defaultColHeight = inject<Ref<number>>("defaultColHeight");
 const columnConfig = inject<Ref<ColumnConfig[]>>("columnConfig");
 const rowConfig = inject<Ref<RowConfig[]>>("rowConfig");
-
+const scrollRef = inject<Ref<typeof ElScrollbar | null>>("scrollRef");
+const renderColConfig = inject<RenderConfig>("renderColConfig");
+const renderRowConfig = inject<RenderConfig>("renderRowConfig");
+const scrollLeft = inject<Ref<number>>("scrollLeft");
+const scrollTop = inject<Ref<number>>("scrollTop");
 interface SelectedCell {
   startRow: number | null;
   startCol: number | null;
@@ -58,6 +68,8 @@ interface SelectedCell {
 const selecting = ref<boolean>(false); //框选中
 const isShowSelectionBox = ref<boolean>(false); //是否显示选择框
 const isShowEditBox = ref<boolean>(false); //是否显示修改框
+
+const initSpeed = ref<number>(0); //水平滚动条初始速度
 
 const startCell = ref<SelectedCell>({
   startRow: null,
@@ -81,6 +93,8 @@ const startclickedStyle = reactive<SelectedCell>({
   position: "",
 });
 
+let printInterval: number | null = null;
+
 const startSelection = (event: MouseEvent) => {
   // 检查是否是鼠标右键点击（鼠标右键的button值为2）
   if (event.button === 2) {
@@ -89,6 +103,12 @@ const startSelection = (event: MouseEvent) => {
   const clickedElement = event.target as HTMLElement;
   const isTableCell = clickedElement.classList.contains("table-cell-item");
   const isMergeCell = clickedElement.classList.contains("merge-cell");
+
+  //避免从非单元格的元素进行点击
+  if (!isMergeCell && !isTableCell) {
+    return;
+  }
+
   //非合并单元格
   if (!isMergeCell && isTableCell) {
     const cols = Number(clickedElement.getAttribute("data-col"));
@@ -105,6 +125,11 @@ const startSelection = (event: MouseEvent) => {
   endCell.value = cell;
   isShowSelectionBox.value = true;
   isShowEditBox.value = true;
+
+  // 设置定时器
+  if (printInterval === null) {
+    printInterval = window.setInterval(() => scrollOverData(event), 250);
+  }
 };
 
 const updateSelection: (event: MouseEvent) => void = (event) => {
@@ -122,7 +147,14 @@ const updateSelection: (event: MouseEvent) => void = (event) => {
     isShowSelectionBox.value = true;
     isShowEditBox.value = true;
   }
+  // 更新用于打印超出数据的事件对象
+  if (printInterval !== null) {
+    clearInterval(printInterval);
+    printInterval = window.setInterval(() => scrollOverData(event), 80);
+  }
 };
+
+const updateSelectionThrottled = throttle(updateSelection, 80);
 
 //辅助函数 判断是否和之前的单元格是否相同  在单一单元格进行鼠标移动不收集重复数据
 function isCellDifferent(cell1: SelectedCell, cell2: SelectedCell) {
@@ -140,6 +172,12 @@ const endSelection = (event: MouseEvent) => {
     return;
   }
   selecting.value = false;
+  // 清除定时器
+  if (printInterval !== null) {
+    clearInterval(printInterval);
+    printInterval = null;
+  }
+  stopScroll();
 };
 
 const getCellFromMouseEvent = (
@@ -158,8 +196,14 @@ const getCellFromMouseEvent = (
     target = target.parentElement as HTMLElement;
   }
 
+  //未点击单元格的情况
   if (!target || !isTableCell) {
-    return { startRow: null, startCol: null, endRow: null, endCol: null }; // 如果没有找到.table-cell-item元素，则返回默认值
+    return {
+      startRow: endCell.value.startRow,
+      startCol: endCell.value.startCol,
+      endRow: endCell.value.endRow,
+      endCol: endCell.value.endCol,
+    }; // 如果没有找到.table-cell-item元素，则返回默认值
   }
 
   let startRow, startCol, endRow, endCol;
@@ -269,6 +313,133 @@ const longPressTransitionStyle =
 
 const selectedBoxTransition = computed(() => {
   return selecting.value ? longPressTransitionStyle : "none 0s ease 0s";
+});
+
+function scrollOverData(event: MouseEvent) {
+  const scrollbar = scrollRef?.value?.$el as HTMLElement;
+  if (!scrollbar) return;
+
+  const scrollbarRect = scrollbar.getBoundingClientRect();
+  // 上边界超出25像素，左边界超出80像素
+  const overTop =
+    event.clientY < scrollbarRect.top + defaultColHeight?.value!
+      ? scrollbarRect.top + defaultColHeight?.value! - event.clientY
+      : 0;
+  const overLeft =
+    event.clientX < scrollbarRect.left + defaultRowWidth?.value!
+      ? scrollbarRect.left + defaultRowWidth?.value! - event.clientX
+      : 0;
+  const overBottom = Math.max(event.clientY - scrollbarRect.bottom, 0);
+  const overRight = Math.max(event.clientX - scrollbarRect.right, 0);
+  if (overRight > 0) {
+    initSpeed.value = calculateScrollSpeed(overRight);
+    startHorizontalScroll();
+    let addNum = 2;
+    if (overRight > 20) {
+      // 第一个阈值
+      addNum = 3;
+    }
+    endCell.value.endCol = (renderColConfig?.endIndex as number) + addNum;
+  } else if (overLeft > 0) {
+    initSpeed.value = calculateScrollSpeed(overLeft, true); // 计算向左滚动的速度
+    startHorizontalScroll(); // 现在应该正确处理向左滚动
+    let addNum = 2;
+    if (overLeft > 20) {
+      // 第一个阈值
+      addNum = 3;
+    }
+    endCell.value.startCol = Math.max(
+      (renderColConfig?.startIndex as number) - addNum,
+      0
+    );
+  } else if (overBottom > 0) {
+    initSpeed.value = calculateScrollSpeed(overBottom, false);
+    startVerticalScroll();
+    let addNum = 2;
+    if (overBottom > 20) {
+      addNum = 3;
+    }
+    endCell.value.endRow = (renderRowConfig?.endIndex as number) + addNum;
+  } else if (overTop > 0) {
+    initSpeed.value = calculateScrollSpeed(overBottom, true);
+    startVerticalScroll();
+    let addNum = 2;
+    if (overTop > 20) {
+      addNum = 3;
+    }
+    endCell.value.startRow = Math.max(
+      (renderRowConfig?.startIndex as number) - addNum,
+      0
+    );
+  } else {
+    stopScroll();
+  }
+}
+
+let scrollInterval: number | null = null;
+
+// 计算滚动速度，考虑向左滚动
+const calculateScrollSpeed = (
+  overDistance: number,
+  isLeftOrTop: boolean = false
+) => {
+  const baseSpeed = 20; // 基本滚动速度
+  const speedIncrement = 0.8; // 每个单位overDistance增加的速度
+  let speed = baseSpeed + Math.floor(overDistance * speedIncrement);
+
+  return isLeftOrTop ? -speed : speed; // 向左滚动时返回负速度
+};
+
+// 在startHorizontalScroll中处理负速度
+const startHorizontalScroll = () => {
+  if (scrollInterval !== null) return;
+  scrollInterval = window.setInterval(() => {
+    if (scrollRef?.value) {
+      const newScrollLeft = scrollLeft?.value! + initSpeed.value;
+      scrollRef.value.setScrollLeft(newScrollLeft);
+
+      // 检查是否达到滚动极限
+      if (scrollLeft?.value === newScrollLeft && scrollInterval) {
+        console.log("Reached scroll limit, stopping");
+        clearInterval(scrollInterval);
+        scrollInterval = null;
+      }
+    }
+  }, 80);
+};
+
+const startVerticalScroll = () => {
+  if (scrollInterval !== null) return;
+  scrollInterval = window.setInterval(() => {
+    if (scrollRef?.value) {
+      const newScrollTop = scrollTop?.value! + initSpeed.value;
+      scrollRef.value.setScrollTop(newScrollTop);
+      // 检查是否达到滚动极限
+      if (scrollTop?.value === newScrollTop && scrollInterval) {
+        console.log("Reached scroll limit, stopping");
+        clearInterval(scrollInterval);
+        scrollInterval = null;
+      }
+    }
+  }, 80);
+};
+
+const stopScroll = () => {
+  if (scrollInterval !== null) {
+    clearInterval(scrollInterval);
+    scrollInterval = null;
+  }
+};
+
+onMounted(() => {
+  window.addEventListener("mousedown", startSelection);
+  window.addEventListener("mousemove", updateSelectionThrottled);
+  window.addEventListener("mouseup", endSelection);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("mousedown", startSelection);
+  window.removeEventListener("mousemove", updateSelectionThrottled);
+  window.removeEventListener("mouseup", endSelection);
 });
 </script>
 

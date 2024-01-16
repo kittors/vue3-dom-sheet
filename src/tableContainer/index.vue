@@ -139,7 +139,6 @@ const props = defineProps<{
   height: number;
   width: number;
   cache: number;
-  isShowTableLoading: boolean;
 }>();
 
 const {
@@ -176,6 +175,8 @@ const {
   rowHeaderRightBorder,
   rowHeaderWidth,
   fixTranslaceRightWidth,
+  renderColConfig,
+  renderRowConfig,
 } = useTableComputed(
   props,
   currentTableHeight,
@@ -214,6 +215,10 @@ provide("columnHeaderBottomBorder", columnHeaderBottomBorder);
 provide("rowHeaderRightBorder", rowHeaderRightBorder);
 provide("rowHeaderWidth", rowHeaderWidth);
 provide("fixTranslaceRightWidth", fixTranslaceRightWidth);
+provide("tableContainerRef", tableContainerRef);
+provide("scrollRef", scrollRef);
+provide("renderColConfig", renderColConfig);
+provide("renderRowConfig", renderRowConfig);
 
 onMounted(() => {
   // 获取 table-container 的父元素并开始观察

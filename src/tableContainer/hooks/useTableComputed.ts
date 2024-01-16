@@ -541,7 +541,9 @@ export default function useTableComputed(props: { tableConfig: TableConfig | nul
         columnHeaderBottomBorder,
         rowHeaderRightBorder,
         rowHeaderWidth,
-        fixTranslaceRightWidth
+        fixTranslaceRightWidth,
+        renderColConfig,
+        renderRowConfig
     }
 
 }
