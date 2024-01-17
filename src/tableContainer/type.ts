@@ -21,6 +21,7 @@ export interface TableCell {
     url: string; //超链接
     writeMode: string; //文字排版模式 纵向 水平 vertical  horizontal
     isBreakLine: boolean; //是否换行
+    [key: string]: string | boolean | number | Border | null;  // 索引签名
 }
 
 export interface Border {
@@ -80,4 +81,12 @@ export interface RenderConfig {
     renderEndIndex: number;
     startIndex: number;
     endIndex: number;
+}
+
+export interface SelectedCell {
+    startRow: number | null;
+    startCol: number | null;
+    endRow: number | null;
+    endCol: number | null;
+    position?: string;
 }

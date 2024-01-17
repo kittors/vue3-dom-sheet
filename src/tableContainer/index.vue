@@ -74,9 +74,10 @@ import {
   onMounted,
   onUnmounted,
   nextTick,
+  watch,
 } from "vue";
 import useTableComputed from "./hooks/useTableComputed";
-import { TableConfig } from "./type";
+import { Border, TableCell, TableConfig } from "./type";
 import { ElScrollbar } from "element-plus";
 import handleKeydown from "./event/keyDownEvent";
 
@@ -185,11 +186,50 @@ const {
   tableStore
 );
 
+const currentTableData = ref<TableCell[][] | null>(null);
+
+watch(
+  () => tableData.value,
+  () => {
+    //防止undefined的数据
+    if (tableData.value) {
+      //创建副本
+      currentTableData.value = tableData.value;
+    }
+  }
+);
+
+//修改二维数组表格内容
+const updateCurrentTableData = (
+  rowIndex: number,
+  colIndex: number,
+  attribute: string,
+  value: string | boolean | number | Border | null
+) => {
+  // 首先检查 currentTableData.value 是否存在
+  if (currentTableData.value) {
+    // 检查 rowIndex 是否在行的范围内
+    if (currentTableData.value.length > rowIndex && rowIndex >= 0) {
+      // 检查 colIndex 是否在列的范围内
+      if (currentTableData.value[rowIndex].length > colIndex && colIndex >= 0) {
+        // 现在安全地更新值
+        currentTableData.value[rowIndex][colIndex][attribute] = value;
+      } else {
+        console.error("列索引超出范围");
+      }
+    } else {
+      console.error("行索引超出范围");
+    }
+  } else {
+    console.error("currentTableData.value 不存在");
+  }
+};
+
 //抛出由子组件调用
 provide("renderRowArr", renderRowArr);
 provide("rowConfig", rowConfig);
 provide("columnConfig", columnConfig);
-provide("tableData", tableData);
+provide("tableData", currentTableData);
 provide("columnInfo", columnInfo);
 provide("rowInfo", rowInfo);
 provide("scrollTop", scrollTop);
@@ -219,6 +259,7 @@ provide("tableContainerRef", tableContainerRef);
 provide("scrollRef", scrollRef);
 provide("renderColConfig", renderColConfig);
 provide("renderRowConfig", renderRowConfig);
+provide("updateCurrentTableData", updateCurrentTableData);
 
 onMounted(() => {
   // 获取 table-container 的父元素并开始观察
