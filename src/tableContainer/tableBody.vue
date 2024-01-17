@@ -25,30 +25,41 @@
     />
     <div
       class="normal-selected-box"
+      v-if="
+        selectedBoxStyle.height !== '0px' && selectedBoxStyle.width !== '0px'
+      "
       :style="{ ...selectedBoxStyle, transition: selectedBoxTransition }"
     ></div>
     <div
       class="edit-box table-cell-item"
-      v-if="tableData && startCell.startRow && startCell.startCol"
+      v-if="
+        tableData && startCell.startRow !== null && startCell.startCol !== null
+      "
       :style="{
         ...editBoxStyle,
-        fontSize:
-          tableData[startCell.startRow][startCell.startCol].fontSize + 'px',
+        fontSize: cellItem.fontSize + 'px',
       }"
       :start-col="startCell.startCol"
       :end-col="startCell.endCol"
       :start-row="startCell.startRow"
       :end-row="startCell.endRow"
+      @dblclick="handleDoubleClick"
     >
+      <div
+        class="cell-data"
+        v-if="!isInputVisible"
+        :style="{
+          lineHeight: cellItem.fontSize + 'px',
+        }"
+      >
+        {{ cellItem.value }}
+      </div>
       <input
-        v-show="isTyping"
+        v-else
         class="edit-box-input"
         ref="inputRef"
-        :class="{ 'no-cursor': !isTyping }"
         v-model="inputValue"
-        @input="startTyping"
-        @keydown="handleKeydown"
-        @dblclick="handleDoubleClick"
+        @input="debouncedInputHandler(inputValue)"
       />
     </div>
   </div>
@@ -103,25 +114,9 @@ const initSpeed = ref<number>(0); //水平滚动条初始速度
 const isEditing = ref<boolean>(false); //是否正在修改
 
 const inputRef = ref<HTMLInputElement | null>(null); //表格输入框
-const isTyping = ref(false); // 跟踪是否开始输入
 const inputValue = ref("");
-
-// 用户开始键入时触发
-const startTyping = (event: Event) => {
-  isTyping.value = true; // 用户开始键入，显示光标
-
-  // 将事件对象转换为 InputEvent
-  const inputEvent = event as InputEvent;
-  const value = (inputEvent.target as HTMLInputElement).value;
-  debouncedInputHandler(value);
-};
-
-const handleKeydown = (event: KeyboardEvent) => {
-  // 检查是否按下的是左键或右键
-  if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-    isTyping.value = true;
-  }
-};
+// 新增状态，用于控制输入框的显示
+const isInputVisible = ref<boolean>(false);
 
 // 防抖处理的输入变化函数
 const debouncedInputHandler = debounce((value: string) => {
@@ -129,7 +124,6 @@ const debouncedInputHandler = debounce((value: string) => {
   const rowIndex = startCell.value?.startRow;
   const colIndex = startCell.value?.startCol;
   const attribute = "value"; // 这里应该是你想要更新的属性名称
-
   // 调用 updateCurrentTableData 函数
   if (rowIndex !== null && colIndex !== null) {
     updateCurrentTableData(rowIndex, colIndex, attribute, value);
@@ -153,26 +147,19 @@ const endCell = ref<SelectedCell>({
 });
 
 //计算属性hooks
-const { selectedBoxStyle, editBoxStyle, selectedBoxTransition } =
+const { selectedBoxStyle, editBoxStyle, selectedBoxTransition, cellItem } =
   useTbodyComputed(
     startCell,
     endCell,
     columnConfig,
     rowConfig,
     defaultRowWidth,
-    selecting
+    selecting,
+    tableData
   );
 
 //溢出框选定时器
 let scrollOverInterval: number | null = null;
-
-//双击执行
-const handleDoubleClick = (event: MouseEvent) => {
-  // 仅在左键双击时处理
-  if (event.button === 0) {
-    isTyping.value = true;
-  }
-};
 
 //鼠标离开div.table-body
 const mouseLeaveTbody = () => {
@@ -188,22 +175,16 @@ const startSelection = (event: MouseEvent) => {
   if (event.button === 2) {
     return;
   }
-  const clickedElement = event.target as HTMLElement;
-  const isTableCell = clickedElement.classList.contains("table-cell-item");
-  const isMergeCell = clickedElement.classList.contains("merge-cell");
+  isInputVisible.value = false;
   //避免从非单元格的元素进行点击
-  if (!isMergeCell && !isTableCell) {
-    return;
-  }
-
   selecting.value = true;
   const cell = getCellFromMouseEvent(event);
-  startCell.value = cell;
-  endCell.value = cell;
+  startCell.value = { ...cell };
+  endCell.value = { ...cell };
+  console.log(startCell.value);
   isShowSelectionBox.value = true;
   isShowEditBox.value = true;
-  inputValue.value =
-    tableData.value[startCell.value.startRow!][startCell.value.startCol!].value;
+  inputValue.value = cellItem.value.value;
   // 设置定时器
   if (scrollOverInterval === null) {
     scrollOverInterval = window.setInterval(() => scrollOverData(event), 250);
@@ -213,7 +194,6 @@ const startSelection = (event: MouseEvent) => {
     setTimeout(() => {
       if (inputRef.value) {
         inputRef.value.focus();
-        console.log(inputRef.value);
       }
     }, 80);
   });
@@ -232,14 +212,14 @@ const updateSelection: (event: MouseEvent) => void = (event) => {
 
   //检查是否是相同的单元格，相同则不重复更新数据
   if (isCellDifferent(cell as SelectedCell, endCell.value as SelectedCell)) {
-    endCell.value = cell;
+    endCell.value = { ...cell };
     isShowSelectionBox.value = true;
     isShowEditBox.value = true;
   }
   // 更新用于打印超出数据的事件对象
   if (scrollOverInterval !== null) {
     clearInterval(scrollOverInterval);
-    scrollOverInterval = window.setInterval(() => scrollOverData(event), 80);
+    scrollOverInterval = window.setInterval(() => scrollOverData(event), 20);
   }
 };
 
@@ -281,14 +261,12 @@ const getCellFromMouseEvent = (
   endCol: number | null;
 } => {
   let target = event.target as HTMLElement;
-  const isTableCell = target.classList.contains("table-cell-item");
   // 如果点击的不是 .table-cell-item 元素，向上遍历 DOM 树直到找到 .table-cell-item 元素
-  while (target && !isTableCell) {
+  while (target && !target.classList.contains("table-cell-item")) {
     target = target.parentElement as HTMLElement;
   }
-
   //未点击单元格的情况
-  if (!target || !isTableCell) {
+  if (!target) {
     return {
       startRow: endCell.value.startRow,
       startCol: endCell.value.startCol,
@@ -296,6 +274,7 @@ const getCellFromMouseEvent = (
       endCol: endCell.value.endCol,
     }; // 如果没有找到.table-cell-item元素，则返回默认值
   }
+  const isTableCell = target.classList.contains("table-cell-item");
 
   let startRow, startCol, endRow, endCol;
 
@@ -322,61 +301,96 @@ function scrollOverData(event: MouseEvent) {
   if (!scrollbar) return;
 
   const scrollbarRect = scrollbar.getBoundingClientRect();
-  // 上边界超出25像素，左边界超出80像素
-  const overTop =
-    event.clientY < scrollbarRect.top + defaultColHeight?.value!
-      ? scrollbarRect.top + defaultColHeight?.value! - event.clientY
-      : 0;
-  const overLeft =
-    event.clientX < scrollbarRect.left + defaultRowWidth?.value!
-      ? scrollbarRect.left + defaultRowWidth?.value! - event.clientX
-      : 0;
+
+  const overTop = calculateOverDistance(
+    event.clientY,
+    scrollbarRect.top,
+    defaultColHeight?.value
+  );
+  const overLeft = calculateOverDistance(
+    event.clientX,
+    scrollbarRect.left,
+    defaultRowWidth?.value
+  );
   const overBottom = Math.max(event.clientY - scrollbarRect.bottom, 0);
   const overRight = Math.max(event.clientX - scrollbarRect.right, 0);
+
   if (overRight > 0) {
-    initSpeed.value = calculateScrollSpeed(overRight);
-    startHorizontalScroll();
-    let addNum = 2;
-    if (overRight > 20) {
-      // 第一个阈值
-      addNum = 3;
-    }
-    endCell.value.endCol = (renderColConfig?.endIndex as number) + addNum;
+    handleScroll(
+      "horizontalScroll",
+      overRight,
+      false,
+      "endCol",
+      renderColConfig!
+    );
   } else if (overLeft > 0) {
-    initSpeed.value = calculateScrollSpeed(overLeft, true); // 计算向左滚动的速度
-    startHorizontalScroll(); // 现在应该正确处理向左滚动
-    let addNum = 2;
-    if (overLeft > 20) {
-      // 第一个阈值
-      addNum = 3;
-    }
-    endCell.value.startCol = Math.max(
-      (renderColConfig?.startIndex as number) - addNum,
-      0
+    handleScroll(
+      "horizontalScroll",
+      overLeft,
+      true,
+      "startCol",
+      renderColConfig!
     );
   } else if (overBottom > 0) {
-    initSpeed.value = calculateScrollSpeed(overBottom, false);
-    startVerticalScroll();
-    let addNum = 2;
-    if (overBottom > 20) {
-      addNum = 3;
-    }
-    endCell.value.endRow = (renderRowConfig?.endIndex as number) + addNum;
-  } else if (overTop > 0) {
-    initSpeed.value = calculateScrollSpeed(overBottom, true);
-    startVerticalScroll();
-    let addNum = 2;
-    if (overTop > 20) {
-      addNum = 3;
-    }
-    endCell.value.startRow = Math.max(
-      (renderRowConfig?.startIndex as number) - addNum,
-      0
+    handleScroll(
+      "verticalScroll",
+      overBottom,
+      false,
+      "endRow",
+      renderRowConfig!
     );
+  } else if (overTop > 0) {
+    handleScroll("verticalScroll", overTop, true, "startRow", renderRowConfig!);
   } else {
     stopScroll();
   }
 }
+
+function handleScroll(
+  scrollDirection: string,
+  overDistance: number,
+  isLeftOrTop: boolean,
+  attribute: string,
+  renderConfig: RenderConfig
+) {
+  handleAutoScroll(
+    overDistance,
+    isLeftOrTop,
+    scrollDirection,
+    renderConfig!,
+    attribute
+  );
+}
+
+function calculateOverDistance(
+  mousePosition: number,
+  edgePosition: number,
+  offset: number | undefined
+): number {
+  return mousePosition < edgePosition + (offset || 0)
+    ? edgePosition + (offset || 0) - mousePosition
+    : 0;
+}
+
+//执行自动滚动
+const handleAutoScroll = (
+  overDistance: number,
+  isLeftOrTop: boolean = false,
+  scrollDirection: string = "horizontalScroll",
+  renderConfig: RenderConfig,
+  attributes: string
+) => {
+  initSpeed.value = calculateScrollSpeed(overDistance, isLeftOrTop);
+  scrollDirection === "horizontalScroll"
+    ? startHorizontalScroll()
+    : startVerticalScroll();
+  //会随着鼠标的偏移距离逐渐提速
+  let addNum = Math.ceil(overDistance / 10);
+  (endCell.value[attributes as keyof typeof endCell.value] as number) =
+    !isLeftOrTop
+      ? renderConfig.endIndex + addNum
+      : Math.max(renderConfig.startIndex - addNum, 0);
+};
 
 //滚动定时器 用于考虑非线形滚动速度
 let scrollInterval: number | null = null;
@@ -436,18 +450,50 @@ const stopScroll = () => {
   }
 };
 
+// 添加一个新的方法来处理键盘按下事件
+const handleKeyPress = (event: KeyboardEvent) => {
+  // 判断是否有单元格被框选且编辑框可见
+  if (isShowSelectionBox.value && isShowEditBox.value) {
+    // 检查按下的是否是 Enter 键
+    if (event.key === "Enter") {
+      // 显示输入框并聚焦
+      isInputVisible.value = true;
+      nextTick(() => {
+        inputRef.value?.focus();
+      });
+    }
+    // 检查按键是否是 Enter，输入框是否聚焦且可见
+    if (
+      event.key === "Enter" &&
+      document.activeElement === inputRef.value &&
+      isInputVisible.value
+    ) {
+      // 更新数据并隐藏输入框
+      debouncedInputHandler(inputValue.value);
+      isInputVisible.value = false;
+    }
+  }
+};
+
+const handleDoubleClick = () => {
+  isInputVisible.value = true;
+  nextTick(() => {
+    inputRef.value?.focus();
+  });
+};
+
 //生命周期钩子函数
 onMounted(() => {
   window.addEventListener("mousedown", startSelection);
   window.addEventListener("mousemove", updateSelectionThrottled);
   window.addEventListener("mouseup", endSelection);
-  window.addEventListener("dblclick", handleDoubleClick);
+  window.addEventListener("keydown", handleKeyPress);
 });
 onBeforeUnmount(() => {
   window.removeEventListener("mousedown", startSelection);
   window.removeEventListener("mousemove", updateSelectionThrottled);
   window.removeEventListener("mouseup", endSelection);
-  window.removeEventListener("dblclick", handleDoubleClick);
+  window.removeEventListener("keydown", handleKeyPress);
 });
 </script>
 
@@ -464,10 +510,15 @@ onBeforeUnmount(() => {
   }
   .edit-box {
     position: absolute;
-    z-index: 3;
+    z-index: 2;
     background-color: #fff;
     box-sizing: border-box;
     border: 2px solid #1266ec;
+    .cell-data {
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+    }
     .edit-box-input {
       width: 100%;
       height: 100%;
@@ -481,9 +532,14 @@ onBeforeUnmount(() => {
       color: inherit; /* 继承文字颜色 */
       line-height: inherit; /* 继承行高 */
     }
-    .edit-box-input.no-cursor {
-      caret-color: transparent; /* 隐藏光标 */
-    }
   }
+}
+.hidden-input {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: -1;
+  opacity: 0; /* 隐藏输入框 */
 }
 </style>

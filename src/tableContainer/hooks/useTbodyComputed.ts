@@ -1,7 +1,7 @@
 import { computed, Ref } from 'vue'
-import type { SelectedCell, ColumnConfig, RowConfig } from '../type'
+import type { SelectedCell, ColumnConfig, RowConfig, TableCell } from '../type'
 
-export default function useTbodyComputed(startCell: Ref<SelectedCell>, endCell: Ref<SelectedCell>, columnConfig: Ref<ColumnConfig[]> | undefined, rowConfig: Ref<RowConfig[]> | undefined, defaultRowWidth: Ref<number> | undefined, selecting: Ref<boolean>) {
+export default function useTbodyComputed(startCell: Ref<SelectedCell>, endCell: Ref<SelectedCell>, columnConfig: Ref<ColumnConfig[]> | undefined, rowConfig: Ref<RowConfig[]> | undefined, defaultRowWidth: Ref<number> | undefined, selecting: Ref<boolean>, tableData: Ref<TableCell[][]> | undefined) {
 
     //辅助函数
     const isCellValid = (cell: SelectedCell): boolean => {
@@ -163,6 +163,17 @@ export default function useTbodyComputed(startCell: Ref<SelectedCell>, endCell: 
         return selecting.value ? longPressTransitionStyle : "none 0s ease 0s";
     });
 
-    return { selectedArea, selectedBoxWidth, selectedBoxHeight, selectedLeft, selectedTop, selectedBoxStyle, editBoxStyle, selectedBoxTransition }
+    const cellItem = computed(() => {
+        if (
+            tableData &&
+            startCell.value.startRow !== null &&
+            startCell.value.startCol !== null
+        ) {
+            return tableData.value[startCell.value.startRow][startCell.value.startCol];
+        }
+        return { fontSize: "", value: "" };
+    });
+
+    return { selectedArea, selectedBoxWidth, selectedBoxHeight, selectedLeft, selectedTop, selectedBoxStyle, editBoxStyle, selectedBoxTransition, cellItem }
 
 }

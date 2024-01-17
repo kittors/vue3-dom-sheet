@@ -18,7 +18,12 @@
     :data-row="rows"
     :data-col="cols"
   >
-    {{ tableData[rows][cols].value }}
+    <div
+      class="cell-data"
+      :style="{ lineHeight: tableData[rows][cols].fontSize + 'px' }"
+    >
+      {{ tableData[rows][cols].value }}
+    </div>
   </div>
 </template>
 
@@ -49,5 +54,9 @@ const scale = inject<number>("scale");
   flex-shrink: 0;
   flex-grow: 0;
   overflow: hidden;
+  padding: 2px;
+  .cell-data {
+    line-height: 14px;
+  }
 }
 </style>

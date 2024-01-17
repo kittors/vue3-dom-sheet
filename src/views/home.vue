@@ -31,7 +31,7 @@ const baseContainer = ref(null);
 const getTableDate1 = () => {
   isShowTableLoading.value = true;
   tableConfig.value = null;
-  generateTableDate("", 100, 50)
+  generateTableDate("4455", 100, 100)
     .then((res) => {
       console.log(res);
       tableConfig.value = res;
