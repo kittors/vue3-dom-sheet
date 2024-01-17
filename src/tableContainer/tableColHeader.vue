@@ -34,6 +34,6 @@ const scale = inject<number>("scale");
   position: sticky;
   top: 0px;
   box-sizing: border-box;
-  z-index: 2;
+  z-index: 3;
 }
 </style>

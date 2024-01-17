@@ -261,14 +261,14 @@ onUnmounted(() => {
     left: 0px;
     top: 0px;
     box-sizing: border-box;
-    z-index: 3;
+    z-index: 5;
     background-color: var(--table-header-color);
   }
   .scrollbar-bottom-container {
     position: absolute;
     border: 1px var(--table-border);
     box-sizing: border-box;
-    z-index: 3;
+    z-index: 9;
     background-color: var(--table-scroll-background);
   }
   .scrollbar-right-container {
@@ -277,7 +277,7 @@ onUnmounted(() => {
     right: -15px;
     border: 1px var(--table-border);
     box-sizing: border-box;
-    z-index: 3;
+    z-index: 10;
     background-color: var(--table-scroll-background);
   }
 }
@@ -290,10 +290,10 @@ onUnmounted(() => {
 :deep(.el-scrollbar__bar.is-vertical) {
   right: -10px;
   top: 4px;
-  z-index: 4;
+  z-index: 11;
 }
 :deep(.el-scrollbar__bar.is-horizontal) {
   bottom: -10px;
-  z-index: 4;
+  z-index: 11;
 }
 </style>

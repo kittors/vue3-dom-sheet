@@ -33,6 +33,6 @@ const defaultRowWidth = inject<number>("defaultRowWidth");
   left: 0;
   color: var(--table-header-font-color);
   font-size: var(--table-header-font-size);
-  z-index: 2;
+  z-index: 4;
 }
 </style>

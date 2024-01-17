@@ -1,6 +1,7 @@
 <template>
   <div
     class="table-body"
+    @mouseleave="mouseLeaveTbody"
     v-if="
       defaultRowWidth && totalColWidth && totalRowHeight && defaultColHeight
     "
@@ -26,6 +27,14 @@
       class="normal-selected-box"
       :style="{ ...selectedBoxStyle, transition: selectedBoxTransition }"
     ></div>
+    <div
+      class="edit-box"
+      :style="{ ...editBoxStyle }"
+      :start-col="startCell.startCol"
+      :end-col="startCell.endCol"
+      :start-row="startCell.startRow"
+      :end-row="startCell.endRow"
+    ></div>
   </div>
 </template>
 
@@ -33,7 +42,6 @@
 import {
   inject,
   ref,
-  reactive,
   computed,
   type Ref,
   onMounted,
@@ -83,17 +91,27 @@ const endCell = ref<SelectedCell>({
   endRow: null,
   endCol: null,
 });
-
-//开始点击的容器
-const startclickedStyle = reactive<SelectedCell>({
-  startRow: null,
-  startCol: null,
-  endRow: null,
-  endCol: null,
-  position: "",
-});
+const isEditing = ref<boolean>(false);
 
 let printInterval: number | null = null;
+
+const handleDoubleClick = (event: MouseEvent) => {
+  // 仅在左键双击时处理
+  if (event.button === 0) {
+  }
+};
+
+// 处理键盘事件
+const handleKeyPress = (event: KeyboardEvent) => {
+  if (event.key === "Enter" && lastClickedElement.value) {
+  }
+};
+
+const lastClickedElement = ref<HTMLElement | null>(null);
+
+const mouseLeaveTbody = () => {
+  isEditing.value = false;
+};
 
 const startSelection = (event: MouseEvent) => {
   // 检查是否是鼠标右键点击（鼠标右键的button值为2）
@@ -103,20 +121,10 @@ const startSelection = (event: MouseEvent) => {
   const clickedElement = event.target as HTMLElement;
   const isTableCell = clickedElement.classList.contains("table-cell-item");
   const isMergeCell = clickedElement.classList.contains("merge-cell");
-
+  lastClickedElement.value = clickedElement;
   //避免从非单元格的元素进行点击
   if (!isMergeCell && !isTableCell) {
     return;
-  }
-
-  //非合并单元格
-  if (!isMergeCell && isTableCell) {
-    const cols = Number(clickedElement.getAttribute("data-col"));
-    const rows = Number(clickedElement.getAttribute("data-row"));
-    startclickedStyle.startCol = cols;
-    startclickedStyle.endCol = cols;
-    startclickedStyle.startRow = rows;
-    startclickedStyle.endRow = rows;
   }
 
   selecting.value = true;
@@ -207,7 +215,7 @@ const getCellFromMouseEvent = (
   }
 
   let startRow, startCol, endRow, endCol;
-  if (!isMergeCell) {
+  if (!isMergeCell && isTableCell) {
     startRow = target.getAttribute("data-row");
     startCol = target.getAttribute("data-col");
     endRow = target.getAttribute("data-row");
@@ -266,6 +274,7 @@ const selectedBoxWidth = computed(() => {
       return total + config.width;
     }, -1);
 });
+
 const selectedBoxHeight = computed(() => {
   if (!selectedArea.value) {
     return 0;
@@ -306,6 +315,124 @@ const selectedBoxStyle = computed(() => {
     left: selectedLeft.value + "px",
     top: selectedTop.value + "px",
   };
+});
+
+const editBoxStyle = computed(() => {
+  return {
+    width: editBoxWidth.value + "px",
+    height: editBoxHeight.value + "px",
+    left: editBoxLeft.value + "px",
+    top: editBoxTop.value + "px",
+  };
+});
+
+const editBoxLeft = computed(() => {
+  if (
+    columnConfig === undefined ||
+    startCell.value.startCol === null ||
+    !defaultRowWidth?.value
+  ) {
+    return 0;
+  }
+
+  return columnConfig.value
+    .slice(0, startCell.value.startCol)
+    .reduce((total, config) => {
+      return total + config.width;
+    }, defaultRowWidth.value + eidtLeftTotal.value);
+});
+
+const eidtLeftTotal = computed(() => {
+  if (
+    selectedArea.value &&
+    startCell.value.startCol! > selectedArea.value.startCol
+  ) {
+    return 0;
+  } else {
+    return 2;
+  }
+});
+
+const editTopTotal = computed(() => {
+  if (
+    selectedArea.value &&
+    startCell.value.startRow! > selectedArea.value.startRow
+  ) {
+    return 0;
+  } else {
+    return 2;
+  }
+});
+
+const editBoxTop = computed(() => {
+  if (rowConfig === undefined || startCell.value.startRow === null) {
+    return 0;
+  }
+
+  return rowConfig.value
+    .slice(0, startCell.value.startRow)
+    .reduce((total, config) => {
+      return total + config.height;
+    }, editTopTotal.value);
+});
+
+const editBoxWidth = computed(() => {
+  if (
+    columnConfig === undefined ||
+    startCell.value.startCol === null ||
+    startCell.value.endCol === null
+  ) {
+    return 0;
+  }
+  return columnConfig.value
+    .slice(startCell.value.startCol, startCell.value.endCol + 1)
+    .reduce((total, config) => {
+      return total + config.width;
+    }, editBoxTotal.value);
+});
+
+const editBoxHeight = computed(() => {
+  if (
+    rowConfig === undefined ||
+    startCell.value.startRow === null ||
+    startCell.value.endRow === null
+  ) {
+    return 0;
+  }
+  return rowConfig.value
+    .slice(startCell.value.startRow, startCell.value.endRow + 1)
+    .reduce((total, config) => {
+      return total + config.height;
+    }, editBoxTotal.value + fixedTotal.value);
+});
+
+const editBoxTotal = computed(() => {
+  if (
+    selectedArea.value &&
+    selectedArea.value.startCol === selectedArea.value.endCol
+  ) {
+    return -5;
+  } else {
+    return -3;
+  }
+});
+
+const fixedTotal = computed(() => {
+  if (
+    selectedArea.value &&
+    selectedArea.value.startCol === selectedArea.value.endCol &&
+    selectedArea.value.startRow !== selectedArea.value.endRow
+  ) {
+    return 2;
+  } else if (
+    selectedArea.value &&
+    selectedArea.value.startCol !== selectedArea.value.endCol &&
+    selectedArea.value.startRow === selectedArea.value.endRow
+  ) {
+    return -2;
+  } else {
+    return 0;
+  }
 });
 
 const longPressTransitionStyle =
@@ -435,11 +562,15 @@ onMounted(() => {
   window.addEventListener("mousedown", startSelection);
   window.addEventListener("mousemove", updateSelectionThrottled);
   window.addEventListener("mouseup", endSelection);
+  window.addEventListener("dblclick", handleDoubleClick);
+  window.addEventListener("keydown", handleKeyPress);
 });
 onBeforeUnmount(() => {
   window.removeEventListener("mousedown", startSelection);
   window.removeEventListener("mousemove", updateSelectionThrottled);
   window.removeEventListener("mouseup", endSelection);
+  window.removeEventListener("dblclick", handleDoubleClick);
+  window.removeEventListener("keydown", handleKeyPress);
 });
 </script>
 
@@ -451,6 +582,13 @@ onBeforeUnmount(() => {
     border: 2px solid #1266ec;
     box-sizing: border-box;
     pointer-events: none;
+    z-index: 2;
+    background-color: rgba(#1266ec, 0.1);
+  }
+  .edit-box {
+    position: absolute;
+    z-index: 3;
+    background-color: #fff;
   }
 }
 </style>
