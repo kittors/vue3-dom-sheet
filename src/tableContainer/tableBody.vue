@@ -73,6 +73,8 @@ import {
   onMounted,
   onBeforeUnmount,
   nextTick,
+  watch,
+  defineEmits,
 } from "vue";
 import TableRow from "./tableRow.vue";
 import throttle from "lodash/throttle";
@@ -149,16 +151,30 @@ const endCell = ref<SelectedCell>({
 });
 
 //计算属性hooks
-const { selectedBoxStyle, editBoxStyle, selectedBoxTransition, cellItem } =
-  useTbodyComputed(
-    startCell,
-    endCell,
-    columnConfig,
-    rowConfig,
-    defaultRowWidth,
-    selecting,
-    tableData
-  );
+const {
+  selectedBoxStyle,
+  editBoxStyle,
+  selectedBoxTransition,
+  cellItem,
+  selectedArea,
+} = useTbodyComputed(
+  startCell,
+  endCell,
+  columnConfig,
+  rowConfig,
+  defaultRowWidth,
+  selecting,
+  tableData
+);
+
+const emit = defineEmits(["selectedAreaValue"]);
+
+watch(
+  () => selectedArea.value,
+  (newVal) => {
+    emit("selectedAreaValue", newVal);
+  }
+);
 
 //溢出框选定时器
 let scrollOverInterval: number | null = null;

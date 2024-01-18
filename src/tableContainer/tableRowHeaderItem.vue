@@ -7,6 +7,7 @@
       height: props.itemConfig.height + 'px',
       transform: `translate(0px,0px)`,
     }"
+    :class="{ 'active-header': isActive }"
     :data-row="props.itemConfig.indexNum"
   >
     {{ props.itemConfig.indexContent }}
@@ -14,11 +15,18 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, inject } from "vue";
-import type { RowConfig, RowInfo } from "./type";
+import { defineProps, inject, type Ref, computed } from "vue";
+import type { RowConfig, RowInfo, SelectedCell } from "./type";
 const props = defineProps<{ itemConfig: RowConfig }>();
 const rowInfo = inject<RowInfo>("rowInfo");
 const defaultRowWidth = inject<number>("defaultRowWidth");
+const selectedArea = inject<Ref<SelectedCell>>("selectedArea");
+const isActive = computed(() => {
+  if (!selectedArea!.value) return false;
+  const { startRow, endRow } = selectedArea!.value;
+  const currentRow = props.itemConfig.indexNum;
+  return currentRow >= startRow! && currentRow <= endRow!;
+});
 </script>
 
 <style scoped lang="less">
@@ -35,5 +43,8 @@ const defaultRowWidth = inject<number>("defaultRowWidth");
   color: var(--table-header-font-color);
   font-size: var(--table-header-font-size);
   z-index: 4;
+}
+.active-header {
+  background-color: var(--table-header-active-color);
 }
 </style>

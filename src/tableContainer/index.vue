@@ -54,7 +54,7 @@
         <!-- 表列名 -->
         <TableColHeader />
         <!-- 表体 -->
-        <TableBody />
+        <TableBody @selectedAreaValue="getSelectedValue" />
       </div>
     </el-scrollbar>
 
@@ -77,7 +77,7 @@ import {
   watch,
 } from "vue";
 import useTableComputed from "./hooks/useTableComputed";
-import { Border, TableCell, TableConfig } from "./type";
+import type { Border, TableCell, TableConfig, SelectedCell } from "./type";
 import { ElScrollbar } from "element-plus";
 import handleKeydown from "./event/keyDownEvent";
 
@@ -199,6 +199,12 @@ watch(
   }
 );
 
+const selectedArea = ref<SelectedCell | null>(null);
+
+const getSelectedValue = (value: SelectedCell) => {
+  selectedArea.value = value;
+};
+
 //修改二维数组表格内容
 const updateCurrentTableData = (
   rowIndex: number,
@@ -260,6 +266,7 @@ provide("scrollRef", scrollRef);
 provide("renderColConfig", renderColConfig);
 provide("renderRowConfig", renderRowConfig);
 provide("updateCurrentTableData", updateCurrentTableData);
+provide("selectedArea", selectedArea);
 
 onMounted(() => {
   // 获取 table-container 的父元素并开始观察

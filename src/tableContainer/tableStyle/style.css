@@ -1,8 +1,9 @@
 /* 在全局样式文件中 */
 :root {
     --table-border: solid #E1E1E1;
-    --table-header-color: #f5f5f5;
-    --table-header-font-color: #999;
+    --table-header-color: #F9FAFB;
+    --table-header-active-color: #EAEBEC;
+    --table-header-font-color: #1E1E1F;
     --table-header-font-size: 14px;
     --table-header-border: solid #C1C1C1;
     /* 自定义颜色变量 */
