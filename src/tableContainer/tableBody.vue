@@ -89,7 +89,7 @@ import useTbodyComputed from "./hooks/useTbodyComputed";
 const renderRowArr = inject<RowConfig[] | null>("renderRowArr"); //渲染行数组
 const totalRenderWidth = inject<number>("totalRenderWidth"); //总渲染宽
 const placeholderTopHeight = inject<number>("placeholderTopHeight"); //向上占位容器高
-const totalColWidth = inject<number>("totalColWidth"); //总列宽
+const totalColWidth = inject<Ref<number>>("totalColWidth"); //总列宽
 const defaultRowWidth = inject<Ref<number>>("defaultRowWidth"); //默认行头宽
 const totalRowHeight = inject<number>("totalRowHeight"); //总行高
 const defaultColHeight = inject<Ref<number>>("defaultColHeight"); //默认列头高
@@ -100,6 +100,8 @@ const renderColConfig = inject<RenderConfig>("renderColConfig"); //渲染列配�
 const renderRowConfig = inject<RenderConfig>("renderRowConfig"); //渲染行配置
 const scrollLeft = inject<Ref<number>>("scrollLeft"); //滚动条向左距离
 const scrollTop = inject<Ref<number>>("scrollTop"); //滚动条向上距离
+const currentTableWidth = inject<Ref<number>>("currentTableWidth");
+const currentTableHeight = inject<Ref<number>>("currentTableHeight");
 const updateCurrentTableData = inject("updateCurrentTableData") as (
   rowIndex: number,
   colIndex: number,
@@ -168,35 +170,86 @@ const mouseLeaveTbody = () => {
 
 //开始框选点击
 const startSelection = (event: MouseEvent) => {
-  // 检查是否是鼠标右键点击（鼠标右键的button值为2）
+  // 考虑数据不存在的情况
   if (!tableData) {
     return;
   }
+  //考虑鼠标右键的情况
   if (event.button === 2) {
     return;
   }
+  let target = event.target as HTMLElement;
+  //创建临时变量
+  let tempTarget_col = event.target as HTMLElement;
+  let tempTarget_row = event.target as HTMLElement;
+  while (
+    tempTarget_col &&
+    !tempTarget_col.classList.contains("table-col-header-item")
+  ) {
+    tempTarget_col = tempTarget_col.parentElement as HTMLElement;
+  }
+  if (tempTarget_col && rowConfig) {
+    const col = Number(tempTarget_col.getAttribute("data-col"));
+    startCell.value = {
+      startCol: col,
+      endCol: col,
+      startRow: 0,
+      endRow: 0,
+    };
+    endCell.value = {
+      startCol: col,
+      startRow: 0,
+      endCol: col,
+      endRow: rowConfig.value.length - 1,
+    };
+    selecting.value = true;
+    return;
+  }
+  while (
+    tempTarget_row &&
+    !tempTarget_row.classList.contains("table-row-header-item")
+  ) {
+    tempTarget_row = tempTarget_row.parentElement as HTMLElement;
+  }
+  if (tempTarget_row && columnConfig) {
+    const row = Number(tempTarget_row.getAttribute("data-row"));
+    startCell.value = {
+      startCol: 0,
+      endCol: 0,
+      startRow: row,
+      endRow: row,
+    };
+    endCell.value = {
+      startCol: 0,
+      startRow: row,
+      endCol: columnConfig.value.length - 1,
+      endRow: row,
+    };
+    selecting.value = true;
+    return;
+  }
+  while (target && !target.classList.contains("table-cell-item")) {
+    target = target.parentElement as HTMLElement;
+  }
+  //避免崩溃
+  if (!target) {
+    return;
+  }
+  //是否隐藏输入框
   isInputVisible.value = false;
   //避免从非单元格的元素进行点击
   selecting.value = true;
   const cell = getCellFromMouseEvent(event);
   startCell.value = { ...cell };
   endCell.value = { ...cell };
-  console.log(startCell.value);
+
   isShowSelectionBox.value = true;
   isShowEditBox.value = true;
   inputValue.value = cellItem.value.value;
   // 设置定时器
   if (scrollOverInterval === null) {
-    scrollOverInterval = window.setInterval(() => scrollOverData(event), 250);
+    scrollOverInterval = window.setInterval(() => scrollOverData(event), 20);
   }
-
-  nextTick(() => {
-    setTimeout(() => {
-      if (inputRef.value) {
-        inputRef.value.focus();
-      }
-    }, 80);
-  });
 };
 
 //更新框选信息
@@ -207,9 +260,30 @@ const updateSelection: (event: MouseEvent) => void = (event) => {
   }
 
   if (!selecting.value) return; //非开始选择 不执行
-
+  // let target = event.target as HTMLElement;
+  if (mouseMovedOutOfTable(event)) {
+    calculateNewEndCellBasedOnMousePosition(event);
+    // 更新用于打印超出数据的事件对象
+    if (scrollOverInterval !== null) {
+      clearInterval(scrollOverInterval);
+      scrollOverInterval = window.setInterval(() => scrollOverData(event), 20);
+    }
+    return;
+  }
   const cell = getCellFromMouseEvent(event);
-
+  if (
+    cell.startCol === null ||
+    cell.startRow === null ||
+    cell.endRow === null ||
+    cell.endCol === null
+  ) {
+    // 更新用于打印超出数据的事件对象
+    if (scrollOverInterval !== null) {
+      clearInterval(scrollOverInterval);
+      scrollOverInterval = window.setInterval(() => scrollOverData(event), 20);
+    }
+    return;
+  }
   //检查是否是相同的单元格，相同则不重复更新数据
   if (isCellDifferent(cell as SelectedCell, endCell.value as SelectedCell)) {
     endCell.value = { ...cell };
@@ -221,6 +295,119 @@ const updateSelection: (event: MouseEvent) => void = (event) => {
     clearInterval(scrollOverInterval);
     scrollOverInterval = window.setInterval(() => scrollOverData(event), 20);
   }
+};
+
+function mouseMovedOutOfTable(event: MouseEvent): boolean {
+  // 假设 scrollRef 是表格滚动容器的引用
+  const scrollContainer = scrollRef?.value?.$el as HTMLElement;
+  if (!scrollContainer || !defaultRowWidth || !defaultColHeight) return true; // 如果没有找到滚动容器，假设鼠标已经移出
+
+  const rect = scrollContainer.getBoundingClientRect();
+  const mouseX = event.clientX;
+  const mouseY = event.clientY;
+
+  // 检查鼠标坐标是否在滚动容器范围内
+  const isMouseOutOfTable =
+    mouseX < rect.left + defaultRowWidth.value ||
+    mouseX > rect.right ||
+    mouseY < rect.top + defaultColHeight.value ||
+    mouseY > rect.bottom;
+
+  return isMouseOutOfTable;
+}
+
+function calculateNewEndCellBasedOnMousePosition(event: MouseEvent) {
+  // 获取表格滚动容器的引用
+  const scrollContainer = scrollRef?.value?.$el as HTMLElement;
+  if (
+    !scrollContainer ||
+    !currentTableWidth ||
+    !currentTableHeight ||
+    !defaultRowWidth ||
+    !defaultColHeight ||
+    !columnConfig ||
+    !rowConfig
+  )
+    return { startRow: null, startCol: null, endRow: null, endCol: null };
+
+  // 获取表格容器的位置和尺寸
+  const rect = scrollContainer.getBoundingClientRect();
+  // 鼠标位置相对于表格的位置
+  const mouseX = event.clientX - rect.left - defaultRowWidth.value;
+  const mouseY = event.clientY - rect.top - defaultColHeight.value;
+  //鼠标在容器的上方或者下方 其中的16是下方滚动条的高度
+  if (
+    (mouseX > 0 && mouseY < 0) ||
+    (mouseY > currentTableHeight.value - defaultColHeight.value - 16 &&
+      mouseX > 0)
+  ) {
+    const columnIndex = getColumnIndexUnderMouse(
+      mouseX,
+      scrollLeft?.value || 0,
+      columnConfig.value
+    );
+    if (columnIndex! > startCell.value.startCol!) {
+      endCell.value.endCol = columnIndex;
+      endCell.value.startCol = startCell.value.startCol!;
+    } else {
+      endCell.value.startCol = columnIndex;
+      endCell.value.endCol = startCell.value.startCol!;
+    }
+  }
+
+  //鼠标在容器的左方   //鼠标在容器的右方
+  if (
+    (mouseX < 0 && mouseY > 0) ||
+    (mouseX > currentTableWidth.value - defaultRowWidth.value && mouseY > 0)
+  ) {
+    const rowIndex = getRowIndexUnderMouse(
+      mouseY,
+      scrollTop?.value || 0,
+      rowConfig?.value
+    );
+    console.log("鼠标在容器的左方", rowIndex);
+    if (rowIndex! > startCell.value.startRow!) {
+      endCell.value.endRow = rowIndex;
+      endCell.value.startRow = startCell.value.startRow;
+    } else {
+      endCell.value.startRow = rowIndex;
+      endCell.value.endRow = startCell.value.startRow;
+    }
+  }
+}
+
+const getColumnIndexUnderMouse = (
+  mouseX: number,
+  scrollLeft: number,
+  columnConfigs: ColumnConfig[]
+): number | null => {
+  let accumulatedWidth = 0;
+
+  for (const column of columnConfigs) {
+    accumulatedWidth += column.width;
+
+    // 当累加的列宽超过滚动距离加上鼠标的X坐标时，返回当前列的indexNum
+    if (accumulatedWidth > scrollLeft + mouseX) {
+      return column.indexNum;
+    }
+  }
+  // 如果没有找到对应的列，则返回null
+  return null;
+};
+
+const getRowIndexUnderMouse = (
+  mouseY: number,
+  scrollTop: number,
+  rowConfig: RowConfig[]
+): number | null => {
+  let accumulatedHeight = 0;
+  for (const row of rowConfig) {
+    accumulatedHeight += row.height;
+    if (accumulatedHeight > scrollTop + mouseY) {
+      return row.indexNum;
+    }
+  }
+  return null;
 };
 
 //节流控制
@@ -265,21 +452,9 @@ const getCellFromMouseEvent = (
   while (target && !target.classList.contains("table-cell-item")) {
     target = target.parentElement as HTMLElement;
   }
-  //未点击单元格的情况
-  if (!target) {
-    return {
-      startRow: endCell.value.startRow,
-      startCol: endCell.value.startCol,
-      endRow: endCell.value.endRow,
-      endCol: endCell.value.endCol,
-    }; // 如果没有找到.table-cell-item元素，则返回默认值
-  }
-  const isTableCell = target.classList.contains("table-cell-item");
-
   let startRow, startCol, endRow, endCol;
-
   //合并单元格和编辑框或许是有开始和结束的行列位置 所以非data-row和data-col能标识完
-  if (isTableCell) {
+  if (target) {
     startRow =
       target.getAttribute("data-row") || target.getAttribute("start-row");
     startCol =
@@ -299,7 +474,6 @@ const getCellFromMouseEvent = (
 function scrollOverData(event: MouseEvent) {
   const scrollbar = scrollRef?.value?.$el as HTMLElement;
   if (!scrollbar) return;
-
   const scrollbarRect = scrollbar.getBoundingClientRect();
 
   const overTop = calculateOverDistance(
@@ -314,8 +488,7 @@ function scrollOverData(event: MouseEvent) {
   );
   const overBottom = Math.max(event.clientY - scrollbarRect.bottom, 0);
   const overRight = Math.max(event.clientX - scrollbarRect.right, 0);
-
-  if (overRight > 0) {
+  if (overRight > 0 && overTop === 0 && overLeft === 0 && overBottom === 0) {
     handleScroll(
       "horizontalScroll",
       overRight,
@@ -323,7 +496,12 @@ function scrollOverData(event: MouseEvent) {
       "endCol",
       renderColConfig!
     );
-  } else if (overLeft > 0) {
+  } else if (
+    overLeft > 0 &&
+    overTop === 0 &&
+    overRight === 0 &&
+    overBottom === 0
+  ) {
     handleScroll(
       "horizontalScroll",
       overLeft,
@@ -331,7 +509,12 @@ function scrollOverData(event: MouseEvent) {
       "startCol",
       renderColConfig!
     );
-  } else if (overBottom > 0) {
+  } else if (
+    overBottom > 0 &&
+    overTop === 0 &&
+    overRight === 0 &&
+    overLeft === 0
+  ) {
     handleScroll(
       "verticalScroll",
       overBottom,
@@ -339,7 +522,12 @@ function scrollOverData(event: MouseEvent) {
       "endRow",
       renderRowConfig!
     );
-  } else if (overTop > 0) {
+  } else if (
+    overTop > 0 &&
+    overBottom === 0 &&
+    overRight === 0 &&
+    overLeft === 0
+  ) {
     handleScroll("verticalScroll", overTop, true, "startRow", renderRowConfig!);
   } else {
     stopScroll();
@@ -401,7 +589,7 @@ const calculateScrollSpeed = (
   isLeftOrTop: boolean = false
 ) => {
   const baseSpeed = 20; // 基本滚动速度
-  const speedIncrement = 0.8; // 每个单位overDistance增加的速度
+  const speedIncrement = 1; // 每个单位overDistance增加的速度
   let speed = baseSpeed + Math.floor(overDistance * speedIncrement);
 
   return isLeftOrTop ? -speed : speed; // 向左滚动时返回负速度
@@ -450,7 +638,7 @@ const stopScroll = () => {
   }
 };
 
-// 添加一个新的方法来处理键盘按下事件
+//处理键盘按下事件
 const handleKeyPress = (event: KeyboardEvent) => {
   // 判断是否有单元格被框选且编辑框可见
   if (isShowSelectionBox.value && isShowEditBox.value) {

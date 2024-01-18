@@ -194,7 +194,7 @@ watch(
     //防止undefined的数据
     if (tableData.value) {
       //创建副本
-      currentTableData.value = tableData.value;
+      currentTableData.value = JSON.parse(JSON.stringify(tableData.value));
     }
   }
 );

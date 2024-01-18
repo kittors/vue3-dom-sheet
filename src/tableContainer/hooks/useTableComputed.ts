@@ -33,10 +33,10 @@ export default function useTableComputed(props: { tableConfig: TableConfig | nul
         };
     });
 
-    //监听缩放
-    watch(() => tableStore.tableScale, (newVal, oldVal) => {
-        fixResizeIssue()
-    })
+    //监听缩放 缩放feature放弃
+    // watch(() => tableStore.tableScale, () => {
+    //     fixResizeIssue()
+    // })
     //监听当前表格数据修改
     watch(() => currentTableConfig.value, () => {
         scrollTop.value = 0
@@ -92,12 +92,7 @@ export default function useTableComputed(props: { tableConfig: TableConfig | nul
                 }
             }
         }
-
-
-
     }
-
-
 
     function updateHorizontalScrollbarVisibility(
         totalColWidth: number,

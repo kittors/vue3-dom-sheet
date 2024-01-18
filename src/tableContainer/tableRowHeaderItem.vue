@@ -7,6 +7,7 @@
       height: props.itemConfig.height + 'px',
       transform: `translate(0px,0px)`,
     }"
+    :data-row="props.itemConfig.indexNum"
   >
     {{ props.itemConfig.indexContent }}
   </div>

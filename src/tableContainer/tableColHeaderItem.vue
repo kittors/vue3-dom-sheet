@@ -6,6 +6,7 @@
       width: props.itemConfig.width * scale + 'px',
       height: defaultColHeight + 'px',
     }"
+    :data-col="props.itemConfig.indexNum"
   >
     {{ props.itemConfig.indexContent }}
   </div>

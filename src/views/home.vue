@@ -31,6 +31,7 @@ const baseContainer = ref(null);
 const getTableDate1 = () => {
   isShowTableLoading.value = true;
   tableConfig.value = null;
+  //超量数据生成需要结合webWorker
   generateTableDate("4455", 100, 100)
     .then((res) => {
       console.log(res);

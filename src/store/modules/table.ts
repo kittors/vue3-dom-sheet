@@ -9,7 +9,7 @@ const useTableStore = defineStore('operaionBtn', {
             this.tableScale = 1
         },
 
-        //放大缩小功能屏蔽 bug太多，不做开发
+        //放大缩小功能屏蔽 bug太多，不做开发 需要创建多个临时数据
         plusScale() {
             // if (this.tableScale >= 2) {
             //     console.log('已经加到最大了');
