@@ -90,3 +90,9 @@ export interface SelectedCell {
     endCol: number | null;
     position?: string;
 }
+
+export type UserAction = {
+    type: string;
+    timestamp: Date;
+    details: any;
+};

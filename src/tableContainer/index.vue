@@ -79,7 +79,13 @@ import {
   watch,
 } from "vue";
 import useTableComputed from "./hooks/useTableComputed";
-import type { Border, TableCell, TableConfig, SelectedCell } from "./type";
+import type {
+  Border,
+  TableCell,
+  TableConfig,
+  SelectedCell,
+  UserAction,
+} from "./type";
 import { ElScrollbar } from "element-plus";
 import handleKeydown from "./event/keyDownEvent";
 
@@ -230,6 +236,17 @@ const updateCurrentTableData = (
   }
 };
 
+//建立用户行为堆栈 记录用户行为操作
+const userActionsStack: UserAction[] = [];
+function captureUserAction(actionType: string, details: any) {
+  const action: UserAction = {
+    type: actionType,
+    timestamp: new Date(),
+    details: details,
+  };
+  userActionsStack.push(action);
+}
+
 //抛出由子组件调用
 provide("renderRowArr", renderRowArr);
 provide("rowConfig", rowConfig);
@@ -266,6 +283,8 @@ provide("renderColConfig", renderColConfig);
 provide("renderRowConfig", renderRowConfig);
 provide("updateCurrentTableData", updateCurrentTableData);
 provide("selectedArea", selectedArea);
+provide("userActionsStack", userActionsStack);
+provide("captureUserAction", captureUserAction);
 
 onMounted(() => {
   // 获取 table-container 的父元素并开始观察

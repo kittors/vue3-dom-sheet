@@ -104,12 +104,19 @@ const scrollLeft = inject<Ref<number>>("scrollLeft"); //滚动条向左距离
 const scrollTop = inject<Ref<number>>("scrollTop"); //滚动条向上距离
 const currentTableWidth = inject<Ref<number>>("currentTableWidth");
 const currentTableHeight = inject<Ref<number>>("currentTableHeight");
+//更新单元格数据输入
 const updateCurrentTableData = inject("updateCurrentTableData") as (
   rowIndex: number,
   colIndex: number,
   attribute: string,
   value: string | boolean | number | null
 ) => void;
+//用户行为堆栈记录
+const captureUserAction = inject("captureUserAction") as (
+  actionType: string,
+  details: any
+) => void;
+
 const tableData = inject<Ref<TableCell[][]>>("tableData");
 const selecting = ref<boolean>(false); //框选中
 const isShowSelectionBox = ref<boolean>(false); //是否显示选择框
@@ -131,6 +138,7 @@ const debouncedInputHandler = debounce((value: string) => {
   // 调用 updateCurrentTableData 函数
   if (rowIndex !== null && colIndex !== null) {
     updateCurrentTableData(rowIndex, colIndex, attribute, value);
+    captureUserAction("cellEdit", { rowIndex, colIndex, value });
   }
 }, 300); // 300毫秒的防抖时间
 
