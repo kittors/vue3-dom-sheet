@@ -7,13 +7,17 @@
       currentTableWidth &&
       columnConfig &&
       scale &&
-      tableData
+      tableData &&
+      rowConfig
     "
     :style="{
       height: props.height * scale + 'px',
       width: props.width * scale + 'px',
       transform: `translateX(${(translaceRightWidth as number)}px)`,
-      fontSize:tableData[rows][cols].fontSize+'px'
+      fontSize:tableData[rows][cols].fontSize+'px',
+      borderBottom: (rows !== rowConfig.length - 1) ?'1px var(--table-border)' : 'none',
+      borderRight:(cols!==columnConfig.length-1)?'1px var(--table-border)':'none'
+      
     }"
     :data-row="rows"
     :data-col="cols"
@@ -29,7 +33,7 @@
 
 <script setup lang="ts">
 import { defineProps, inject } from "vue";
-import type { ColumnConfig, TableCell } from "./type";
+import type { ColumnConfig, RowConfig, TableCell } from "./type";
 const props = defineProps<{
   height: number;
   width: number;
@@ -38,6 +42,7 @@ const props = defineProps<{
   colConfig: ColumnConfig;
 }>();
 const columnConfig = inject<ColumnConfig[]>("columnConfig");
+const rowConfig = inject<RowConfig[]>("rowConfig");
 const totalColWidth = inject<number>("totalColWidth");
 const currentTableWidth = inject<number>("currentTableWidth");
 const defaultRowWidth = inject<number>("defaultRowWidth");

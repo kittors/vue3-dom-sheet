@@ -381,7 +381,6 @@ function calculateNewEndCellBasedOnMousePosition(event: MouseEvent) {
       scrollTop?.value || 0,
       rowConfig?.value
     );
-    console.log("鼠标在容器的左方", rowIndex);
     if (rowIndex! > startCell.value.startRow!) {
       endCell.value.endRow = rowIndex;
       endCell.value.startRow = startCell.value.startRow;
@@ -621,7 +620,6 @@ const startHorizontalScroll = () => {
 
       // 检查是否达到滚动极限
       if (scrollLeft?.value === newScrollLeft && scrollInterval) {
-        console.log("Reached scroll limit, stopping");
         clearInterval(scrollInterval);
         scrollInterval = null;
       }
@@ -638,7 +636,6 @@ const startVerticalScroll = () => {
       scrollRef.value.setScrollTop(newScrollTop);
       // 检查是否达到滚动极限
       if (scrollTop?.value === newScrollTop && scrollInterval) {
-        console.log("Reached scroll limit, stopping");
         clearInterval(scrollInterval);
         scrollInterval = null;
       }

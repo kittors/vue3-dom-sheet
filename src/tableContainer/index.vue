@@ -16,27 +16,29 @@
     <div
       class="scrollbar-bottom-container"
       :style="{
-        width: currentTableWidth - 1 + 'px',
+        width: currentTableWidth + 'px',
         height: `16px`,
         bottom: `-15px`,
       }"
       v-if="
-        defaultRowWidth &&
-        (totalColWidth + defaultRowWidth) * scale > currentTableWidth
+        defaultRowWidth && totalColWidth + defaultRowWidth > currentTableWidth
       "
     ></div>
     <div
       class="scrollbar-right-container"
-      :style="{ height: currentTableHeight + 'px' }"
-      v-if="totalRowHeight * scale > currentTableHeight - 15"
+      :style="{
+        height:
+          currentTableHeight +
+          (defaultRowWidth &&
+          totalColWidth + defaultRowWidth > currentTableWidth
+            ? 0
+            : -14) +
+          'px',
+      }"
+      v-if="totalRowHeight > currentTableHeight - 40"
     ></div>
     <!-- element滚动条 -->
     <el-scrollbar
-      :height="
-        currentTableHeight - 15 > totalRowHeight*scale
-          ? (totalRowHeight + (defaultColHeight as number)+2)*scale
-          : currentTableHeight - 15 + 'px'
-      "
       always
       ref="scrollRef"
       @scroll="listerScroll"
@@ -103,10 +105,6 @@ const resizeObserver = new ResizeObserver((entries) => {
     const newHeight = parentHeight - offsetTop;
     const newWidth = parrentWidth - offsetLeft;
     currentTableHeight.value = newHeight - 30;
-
-    // if (currentTableHeight.value > (totalColWidth.value as number)) {
-    //   currentTableHeight.value = totalColWidth.value;
-    // }
     currentTableWidth.value = newWidth;
     nextTick(() => {
       if (
@@ -195,6 +193,7 @@ watch(
     if (tableData.value) {
       //创建副本
       currentTableData.value = JSON.parse(JSON.stringify(tableData.value));
+      selectedArea.value = null;
     }
   }
 );

@@ -80,7 +80,7 @@ export default function useTableComputed(props: { tableConfig: TableConfig | nul
     ): void {
         if (wrapRef.parentNode) {
             const verticalScrollbar = wrapRef.parentNode.querySelector<HTMLElement>('.is-vertical');
-            if (totalRowHeight + defaultColHeight <= currentTableHeight - 15) {
+            if (totalRowHeight + defaultColHeight <= currentTableHeight - 14) {
                 wrapRef.style.overflowY = 'visible';
                 if (verticalScrollbar) {
                     verticalScrollbar.style.display = 'none';
