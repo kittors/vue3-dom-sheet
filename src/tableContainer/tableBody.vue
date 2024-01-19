@@ -221,6 +221,7 @@ const startSelection = (event: MouseEvent) => {
     selecting.value = true;
     return;
   }
+  //向上遍历 避免点拿错标签
   while (
     tempTarget_row &&
     !tempTarget_row.classList.contains("table-row-header-item")
@@ -244,10 +245,11 @@ const startSelection = (event: MouseEvent) => {
     selecting.value = true;
     return;
   }
+  //向上遍历 避免点拿错标签
   while (target && !target.classList.contains("table-cell-item")) {
     target = target.parentElement as HTMLElement;
   }
-  //避免崩溃
+  //避免崩溃  找不到会返回null
   if (!target) {
     return;
   }
@@ -503,6 +505,8 @@ function scrollOverData(event: MouseEvent) {
   );
   const overBottom = Math.max(event.clientY - scrollbarRect.bottom, 0);
   const overRight = Math.max(event.clientX - scrollbarRect.right, 0);
+
+  //实际有八个方向的处理，暂只处理四个方向
   if (overRight > 0 && overTop === 0 && overLeft === 0 && overBottom === 0) {
     handleScroll(
       "horizontalScroll",
@@ -617,7 +621,6 @@ const startHorizontalScroll = () => {
     if (scrollRef?.value) {
       const newScrollLeft = scrollLeft?.value! + initSpeed.value;
       scrollRef.value.setScrollLeft(newScrollLeft);
-
       // 检查是否达到滚动极限
       if (scrollLeft?.value === newScrollLeft && scrollInterval) {
         clearInterval(scrollInterval);
