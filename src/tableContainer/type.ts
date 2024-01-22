@@ -93,6 +93,6 @@ export interface SelectedCell {
 
 export type UserAction = {
     type: string;
-    timestamp: Date;
+    timestamp: number;
     details: any;
 };

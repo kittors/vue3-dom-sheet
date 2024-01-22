@@ -26,4 +26,8 @@ function debounce(func: (...args: any[]) => void, wait: number, immediate = fals
     };
 }
 
-export { columnIndexToTitle, debounce }
+function isMac() {
+    return navigator.platform.toUpperCase().indexOf('MAC') >= 0
+}
+
+export { columnIndexToTitle, debounce, isMac }

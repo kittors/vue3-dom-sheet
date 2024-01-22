@@ -200,6 +200,8 @@ watch(
       //创建副本
       currentTableData.value = JSON.parse(JSON.stringify(tableData.value));
       selectedArea.value = null;
+      userActionsStack.value = [];
+      redoStack.value = [];
     }
   }
 );
@@ -237,15 +239,75 @@ const updateCurrentTableData = (
 };
 
 //建立用户行为堆栈 记录用户行为操作
-const userActionsStack: UserAction[] = [];
-function captureUserAction(actionType: string, details: any) {
-  const action: UserAction = {
-    type: actionType,
-    timestamp: new Date(),
-    details: details,
-  };
-  userActionsStack.push(action);
+const userActionsStack = ref<UserAction[]>([]);
+
+const redoStack = ref<UserAction[]>([]);
+
+function captureUserAction(
+  actionType: string,
+  details: { rowIndex: number; colIndex: number; value: string }
+) {
+  // 获取当前动作堆栈的最后一个元素
+  const lastAction = userActionsStack.value[userActionsStack.value.length - 1];
+  const currentTimeStamp = new Date().getTime();
+  // 检查最后一个动作是否是 cellEdit 类型，并且 rowIndex 和 colIndex 匹配
+  if (
+    lastAction &&
+    lastAction.type === "cellEdit" &&
+    lastAction.details.rowIndex === details.rowIndex &&
+    lastAction.details.colIndex === details.colIndex
+  ) {
+    // 如果是，更新最后一个动作的 details
+    lastAction.details = details;
+    lastAction.timestamp = currentTimeStamp; // 可以选择是否更新时间戳
+  } else {
+    // 如果不是，添加新动作
+    const action: UserAction = {
+      type: actionType,
+      timestamp: currentTimeStamp,
+      details: details,
+    };
+    userActionsStack.value.push(action);
+  }
 }
+
+// 撤销操作的函数
+function undoAction() {
+  console.log("撤销操作");
+  if (userActionsStack.value.length > 0) {
+    const action = userActionsStack.value.pop();
+    if (action) {
+      redoStack.value.push(action);
+    }
+  }
+}
+
+// 恢复操作的函数
+function redoAction() {
+  console.log("恢复操作");
+  if (redoStack.value.length > 0) {
+    const action = redoStack.value.pop();
+    if (action) {
+      userActionsStack.value.push(action);
+    }
+  }
+}
+
+watch(
+  userActionsStack,
+  (newVal) => {
+    console.log("用户行为增加数组", newVal);
+  },
+  { deep: true }
+);
+
+watch(
+  redoStack,
+  (newVal) => {
+    console.log("用户行为恢复数组", newVal);
+  },
+  { deep: true }
+);
 
 //抛出由子组件调用
 provide("renderRowArr", renderRowArr);
@@ -285,6 +347,8 @@ provide("updateCurrentTableData", updateCurrentTableData);
 provide("selectedArea", selectedArea);
 provide("userActionsStack", userActionsStack);
 provide("captureUserAction", captureUserAction);
+provide("undoAction", undoAction);
+provide("redoAction", redoAction);
 
 onMounted(() => {
   // 获取 table-container 的父元素并开始观察

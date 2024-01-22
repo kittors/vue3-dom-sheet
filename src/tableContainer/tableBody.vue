@@ -86,7 +86,7 @@ import type {
   SelectedCell,
   TableCell,
 } from "./type";
-import { debounce } from "../utils/sheetUtils";
+import { debounce, isMac } from "../utils/sheetUtils";
 import useTbodyComputed from "./hooks/useTbodyComputed";
 const renderRowArr = inject<RowConfig[] | null>("renderRowArr"); //渲染行数组
 const totalRenderWidth = inject<number>("totalRenderWidth"); //总渲染宽
@@ -117,6 +117,9 @@ const captureUserAction = inject("captureUserAction") as (
   details: any
 ) => void;
 
+const undoAction = inject("undoAction") as () => void;
+const redoAction = inject("redoAction") as () => void;
+
 const tableData = inject<Ref<TableCell[][]>>("tableData");
 const selecting = ref<boolean>(false); //框选中
 const isShowSelectionBox = ref<boolean>(false); //是否显示选择框
@@ -126,6 +129,7 @@ const isEditing = ref<boolean>(false); //是否正在修改
 
 const inputRef = ref<HTMLInputElement | null>(null); //表格输入框
 const inputValue = ref("");
+const oldValue = ref("");
 // 新增状态，用于控制输入框的显示
 const isInputVisible = ref<boolean>(false);
 
@@ -138,9 +142,14 @@ const debouncedInputHandler = debounce((value: string) => {
   // 调用 updateCurrentTableData 函数
   if (rowIndex !== null && colIndex !== null) {
     updateCurrentTableData(rowIndex, colIndex, attribute, value);
-    captureUserAction("cellEdit", { rowIndex, colIndex, value });
+    captureUserAction("cellEdit", {
+      rowIndex,
+      colIndex,
+      newValue: value,
+      oldValue: oldValue.value,
+    });
   }
-}, 300); // 300毫秒的防抖时间
+}, 100); // 300毫秒的防抖时间
 
 //框选开始的位置
 const startCell = ref<SelectedCell>({
@@ -253,6 +262,7 @@ const startSelection = (event: MouseEvent) => {
     selecting.value = true;
     return;
   }
+
   //向上遍历 避免点拿错标签
   while (target && !target.classList.contains("table-cell-item")) {
     target = target.parentElement as HTMLElement;
@@ -261,6 +271,7 @@ const startSelection = (event: MouseEvent) => {
   if (!target) {
     return;
   }
+
   //是否隐藏输入框
   isInputVisible.value = false;
   //避免从非单元格的元素进行点击
@@ -272,6 +283,7 @@ const startSelection = (event: MouseEvent) => {
   isShowSelectionBox.value = true;
   isShowEditBox.value = true;
   inputValue.value = cellItem.value.value;
+  oldValue.value = inputValue.value;
   // 设置定时器
   if (scrollOverInterval === null) {
     scrollOverInterval = window.setInterval(() => scrollOverData(event), 20);
@@ -662,8 +674,30 @@ const stopScroll = () => {
   }
 };
 
+//框选服务初始化
+const initSelectedArea = () => {
+  const defaultCell = {
+    startRow: null,
+    startCol: null,
+    endRow: null,
+    endCol: null,
+  };
+  startCell.value = { ...defaultCell };
+  endCell.value = { ...defaultCell };
+};
+
 //处理键盘按下事件
 const handleKeyPress = (event: KeyboardEvent) => {
+  const ctrlOrCmd = isMac() ? event.metaKey : event.ctrlKey;
+  if (ctrlOrCmd && (event.key === "z" || event.key === "Z")) {
+    initSelectedArea();
+    if (event.shiftKey) {
+      tempRedoAction();
+    } else {
+      tempUndoAction();
+    }
+    event.preventDefault();
+  }
   // 判断是否有单元格被框选且编辑框可见
   if (isShowSelectionBox.value && isShowEditBox.value) {
     // 检查按下的是否是 Enter 键
@@ -686,6 +720,18 @@ const handleKeyPress = (event: KeyboardEvent) => {
     }
   }
 };
+
+// 撤销操作的函数
+function tempUndoAction() {
+  // 撤销操作的逻辑
+  undoAction();
+}
+
+// 恢复操作的函数
+function tempRedoAction() {
+  // 恢复操作的逻辑
+  redoAction();
+}
 
 const handleDoubleClick = () => {
   isInputVisible.value = true;
