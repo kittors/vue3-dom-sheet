@@ -34,12 +34,11 @@ const getTableDate1 = () => {
   //超量数据生成需要结合webWorker
   generateTableDate("4455", 100, 100)
     .then((res) => {
-      console.log(res);
       tableConfig.value = res;
       isShowTableLoading.value = false;
     })
     .catch((err) => {
-      console.log(err);
+      console.error(err);
     });
 };
 const getTableDate2 = () => {
@@ -47,12 +46,11 @@ const getTableDate2 = () => {
   tableConfig.value = null;
   generateTableDate("", 5, 20)
     .then((res) => {
-      console.log(res);
       tableConfig.value = res;
       isShowTableLoading.value = false;
     })
     .catch((err) => {
-      console.log(err);
+      console.error(err);
     });
 };
 </script>

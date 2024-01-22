@@ -245,22 +245,17 @@ const redoStack = ref<UserAction[]>([]);
 
 function captureUserAction(
   actionType: string,
-  details: { rowIndex: number; colIndex: number; value: string }
+  details: {
+    rowIndex: number;
+    colIndex: number;
+    newValue?: string;
+    oldValue?: string;
+  }
 ) {
   // 获取当前动作堆栈的最后一个元素
-  const lastAction = userActionsStack.value[userActionsStack.value.length - 1];
   const currentTimeStamp = new Date().getTime();
   // 检查最后一个动作是否是 cellEdit 类型，并且 rowIndex 和 colIndex 匹配
-  if (
-    lastAction &&
-    lastAction.type === "cellEdit" &&
-    lastAction.details.rowIndex === details.rowIndex &&
-    lastAction.details.colIndex === details.colIndex
-  ) {
-    // 如果是，更新最后一个动作的 details
-    lastAction.details = details;
-    lastAction.timestamp = currentTimeStamp; // 可以选择是否更新时间戳
-  } else {
+  if (actionType === "cellEdit" && details.newValue !== details.oldValue) {
     // 如果不是，添加新动作
     const action: UserAction = {
       type: actionType,
@@ -273,41 +268,39 @@ function captureUserAction(
 
 // 撤销操作的函数
 function undoAction() {
-  console.log("撤销操作");
   if (userActionsStack.value.length > 0) {
     const action = userActionsStack.value.pop();
     if (action) {
+      handleUndoAction(action);
       redoStack.value.push(action);
     }
   }
 }
 
+const handleUndoAction = (action: UserAction) => {
+  if (action.type === "cellEdit") {
+    const { rowIndex, colIndex, oldValue } = action.details;
+    updateCurrentTableData(rowIndex, colIndex, "value", oldValue);
+  }
+};
+
 // 恢复操作的函数
 function redoAction() {
-  console.log("恢复操作");
   if (redoStack.value.length > 0) {
     const action = redoStack.value.pop();
     if (action) {
+      handleRedoAction(action);
       userActionsStack.value.push(action);
     }
   }
 }
 
-watch(
-  userActionsStack,
-  (newVal) => {
-    console.log("用户行为增加数组", newVal);
-  },
-  { deep: true }
-);
-
-watch(
-  redoStack,
-  (newVal) => {
-    console.log("用户行为恢复数组", newVal);
-  },
-  { deep: true }
-);
+const handleRedoAction = (action: UserAction) => {
+  if (action.type === "cellEdit") {
+    const { rowIndex, colIndex, newValue } = action.details;
+    updateCurrentTableData(rowIndex, colIndex, "value", newValue);
+  }
+};
 
 //抛出由子组件调用
 provide("renderRowArr", renderRowArr);

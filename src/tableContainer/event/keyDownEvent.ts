@@ -12,7 +12,6 @@ const handleKeydown = (event: KeyboardEvent, tableStore: ReturnType<typeof useTa
         (!isMac && event.ctrlKey && (event.key === '=' || event.key === '-'))   // Windows: Ctrl + "+" / "-"
     ) {
         event.preventDefault(); // 阻止默认的浏览器行为
-        console.log('Shortcut triggered: ', isMac ? 'Command' : 'Ctrl', event.key);
         // 执行相应的操作
         if (event.key === '=') {
             plusScale()

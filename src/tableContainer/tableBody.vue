@@ -59,7 +59,7 @@
         class="edit-box-input"
         ref="inputRef"
         v-model="inputValue"
-        @input="debouncedInputHandler(inputValue)"
+        @input="handleInput"
       />
     </div>
   </div>
@@ -75,6 +75,7 @@ import {
   nextTick,
   watch,
   defineEmits,
+  reactive,
 } from "vue";
 import TableRow from "./tableRow.vue";
 import throttle from "lodash/throttle";
@@ -130,26 +131,46 @@ const isEditing = ref<boolean>(false); //是否正在修改
 const inputRef = ref<HTMLInputElement | null>(null); //表格输入框
 const inputValue = ref("");
 const oldValue = ref("");
+const beforeSaveData = reactive({
+  newValue: "",
+  oldValue: "",
+  rowIndex: 0,
+  colIndex: 0,
+  isEdit: false,
+});
 // 新增状态，用于控制输入框的显示
 const isInputVisible = ref<boolean>(false);
 
 // 防抖处理的输入变化函数
-const debouncedInputHandler = debounce((value: string) => {
-  // 获取当前编辑的单元格行列索引
-  const rowIndex = startCell.value?.startRow;
-  const colIndex = startCell.value?.startCol;
-  const attribute = "value"; // 这里应该是你想要更新的属性名称
-  // 调用 updateCurrentTableData 函数
-  if (rowIndex !== null && colIndex !== null) {
-    updateCurrentTableData(rowIndex, colIndex, attribute, value);
-    captureUserAction("cellEdit", {
-      rowIndex,
-      colIndex,
-      newValue: value,
-      oldValue: oldValue.value,
-    });
-  }
-}, 100); // 300毫秒的防抖时间
+const debouncedInputHandler = debounce(
+  (newVal: string, oldVal: string, rowIndex: number, colIndex: number) => {
+    // 获取当前编辑的单元格行列索引
+    // const rowIndex = startCell.value?.startRow;
+    // const colIndex = startCell.value?.startCol;
+    const attribute = "value"; // 这里应该是你想要更新的属性名称
+    // 调用 updateCurrentTableData 函数
+    if (rowIndex !== null && colIndex !== null) {
+      updateCurrentTableData(rowIndex, colIndex, attribute, newVal);
+      captureUserAction("cellEdit", {
+        rowIndex,
+        colIndex,
+        newValue: newVal,
+        oldValue: oldVal,
+      });
+    }
+  },
+  1
+); // 300毫秒的防抖时间
+
+//执行输入
+const handleInput = () => {
+  beforeSaveData.newValue = inputValue.value;
+  beforeSaveData.oldValue = oldValue.value;
+  const { startRow, startCol } = startCell.value;
+  beforeSaveData.rowIndex = startRow!;
+  beforeSaveData.colIndex = startCol!;
+  beforeSaveData.isEdit = true;
+};
 
 //框选开始的位置
 const startCell = ref<SelectedCell>({
@@ -211,6 +232,17 @@ const startSelection = (event: MouseEvent) => {
   if (event.button === 2) {
     return;
   }
+
+  if (beforeSaveData.isEdit) {
+    debouncedInputHandler(
+      beforeSaveData.newValue,
+      beforeSaveData.oldValue,
+      beforeSaveData.rowIndex,
+      beforeSaveData.colIndex
+    );
+    beforeSaveData.isEdit = false;
+  }
+
   let target = event.target as HTMLElement;
   //创建临时变量
   let tempTarget_col = event.target as HTMLElement;
@@ -715,7 +747,12 @@ const handleKeyPress = (event: KeyboardEvent) => {
       isInputVisible.value
     ) {
       // 更新数据并隐藏输入框
-      debouncedInputHandler(inputValue.value);
+      debouncedInputHandler(
+        inputValue.value,
+        oldValue.value,
+        startCell.value?.startRow,
+        startCell.value?.startCol
+      );
       isInputVisible.value = false;
     }
   }

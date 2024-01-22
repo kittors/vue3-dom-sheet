@@ -457,25 +457,6 @@ export default function useTableComputed(props: { tableConfig: TableConfig | nul
 
     //每次拖动行列缩放窗口以及缩放大小的时候，刷新下渲染区防止出现异常 （从大范围拖动到小范围，导致渲染区域异常计算）
     const fixResizeIssue = () => {
-        // let accumulatedHeight = 0;
-        // let startRowIndex = 0;
-        // if (!scrollRef.value?.wrapRef || !rowConfig.value || !defaultColHeight.value || !rowInfo.value?.defaultHeight) return;
-        // const scrollTop = scrollRef.value?.wrapRef.scrollTop;
-        // // 计算当前视口内可渲染的行数
-        // renderRowConfig.currentRenderNum = Math.ceil(
-        //     ((currentTableHeight.value - 15 as number) - defaultColHeight.value * scale.value) / (rowInfo.value?.defaultHeight * scale.value),
-        // );
-        // // 确定渲染的结束索引，保证不超出行配置数组的长度
-        // for (let i = 0; i < rowConfig.value.length; i++) {
-        //     accumulatedHeight += rowConfig.value[i].height * scale.value;
-        //     if (accumulatedHeight > scrollTop.value) {
-        //         startRowIndex = i;
-        //         console.log(startRowIndex)
-        //         console.log(renderRowConfig.currentRenderNum)
-        //         break;
-        //     }
-        // }
-        // console.log(startRowIndex)
         // 更新行配置
         getCurrentRenderRows(currentTableHeight.value - 15)
         getCurrentRenderCols(currentTableWidth.value);
