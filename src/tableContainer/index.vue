@@ -31,7 +31,7 @@
           currentTableHeight +
           (defaultRowWidth &&
           totalColWidth + defaultRowWidth > currentTableWidth
-            ? 0
+            ? -0.5
             : -14) +
           'px',
       }"

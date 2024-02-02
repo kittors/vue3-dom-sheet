@@ -34,6 +34,7 @@ const getTableDate1 = () => {
   //超量数据生成需要结合webWorker
   generateTableDate("4455", 100, 100)
     .then((res) => {
+      console.log(res);
       tableConfig.value = res;
       isShowTableLoading.value = false;
     })
